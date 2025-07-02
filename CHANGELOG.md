@@ -1,3 +1,7 @@
+## 1.1.3
+
+* Update Android build files
+
 ## 1.1.2
 
 * update ios build files

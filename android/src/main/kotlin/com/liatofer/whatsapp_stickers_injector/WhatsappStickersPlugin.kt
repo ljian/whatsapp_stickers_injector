@@ -16,7 +16,6 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
-import io.flutter.plugin.common.PluginRegistry.Registrar
 import java.io.File
 
 
@@ -59,14 +58,12 @@ public class WhatsappStickersPlugin: FlutterPlugin, MethodCallHandler, ActivityA
     private const val EXTRA_STICKER_PACK_NAME = "sticker_pack_name"
 
     @JvmStatic
-    fun registerWith(registrar: Registrar) {
-      val channel = MethodChannel(registrar.messenger(), "whatsapp_stickers_injector")
-      channel.setMethodCallHandler(WhatsappStickersPlugin())
-    }
-
-    @JvmStatic
     fun getContentProviderAuthorityURI(context: Context): Uri{
-      return Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(getContentProviderAuthority(context)).appendPath(StickerContentProvider.METADATA).build()
+      return Uri.Builder()
+        .scheme(ContentResolver.SCHEME_CONTENT)
+        .authority(getContentProviderAuthority(context))
+        .appendPath(StickerContentProvider.METADATA)
+        .build()
     }
 
     @JvmStatic
