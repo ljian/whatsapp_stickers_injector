@@ -153,7 +153,12 @@ public class WhatsappStickersPlugin: FlutterPlugin, MethodCallHandler, ActivityA
 
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
     if (requestCode == ADD_PACK) {
-      // Create the intent
+      // Check if result is null before proceeding
+      if (this.result == null) {
+        Log.e("WhatsappStickersPlugin", "Result callback is null in onActivityResult")
+        return true
+      }
+
       if (resultCode == Activity.RESULT_CANCELED) {
         if (data != null) {
           val validationError = data.getStringExtra("validation_error")
@@ -166,11 +171,11 @@ public class WhatsappStickersPlugin: FlutterPlugin, MethodCallHandler, ActivityA
           this.result?.error("cancelled", "cancelled", "")
         }
       } else if (resultCode == Activity.RESULT_OK) {
-        if (data != null) {
-          val bundle = data.extras!!
-          if (bundle!!.containsKey("add_successful")) {
+        if (data != null && data.extras != null) { // Safe null check
+          val bundle = data.extras
+          if (bundle.containsKey("add_successful")) { // Safe access
             this.result?.success("add_successful")
-          } else if (bundle!!.containsKey("already_added")) {
+          } else if (bundle.containsKey("already_added")) {
             this.result?.error("already_added", "already_added", "")
           } else {
             this.result?.success("success")
@@ -181,8 +186,10 @@ public class WhatsappStickersPlugin: FlutterPlugin, MethodCallHandler, ActivityA
       } else {
         this.result?.success("unknown")
       }
+
+      // Clear the result after using it to prevent stale references
+      this.result = null
     }
 
     return true
-  }
-}
+  }}
