@@ -56,6 +56,7 @@ public class StickerContentProvider extends ContentProvider {
     public static final String LICENSE_AGREENMENT_WEBSITE = "sticker_pack_license_agreement_website";
     public static final String IMAGE_DATA_VERSION = "image_data_version";
     public static final String AVOID_CACHE = "whatsapp_will_not_cache_stickers";
+    public static final String ANIMATIONED = "animated_sticker_pack";
 
     public static final String STICKER_FILE_NAME_IN_QUERY = "sticker_file_name";
     public static final String STICKER_FILE_EMOJI_IN_QUERY = "sticker_emoji";
@@ -210,6 +211,7 @@ public class StickerContentProvider extends ContentProvider {
                         LICENSE_AGREENMENT_WEBSITE,
                         IMAGE_DATA_VERSION,
                         AVOID_CACHE,
+                        ANIMATIONED,
                 });
         for (StickerPack stickerPack : stickerPackList) {
             MatrixCursor.RowBuilder builder = cursor.newRow();
@@ -225,6 +227,7 @@ public class StickerContentProvider extends ContentProvider {
             builder.add(stickerPack.licenseAgreementWebsite);
             builder.add(stickerPack.imageDataVersion);
             builder.add(stickerPack.avoidCache ? 1 : 0);
+            builder.add(1);
         }
         cursor.setNotificationUri(Objects.requireNonNull(getContext()).getContentResolver(), uri);
         return cursor;
