@@ -173,9 +173,9 @@ public class WhatsappStickersPlugin: FlutterPlugin, MethodCallHandler, ActivityA
       } else if (resultCode == Activity.RESULT_OK) {
         if (data != null && data.extras != null) { // Safe null check
           val bundle = data.extras
-          if (bundle.containsKey("add_successful")) { // Safe access
+          if (bundle!.containsKey("add_successful")) { // Safe access
             this.result?.success("add_successful")
-          } else if (bundle.containsKey("already_added")) {
+          } else if (bundle!.containsKey("already_added")) {
             this.result?.error("already_added", "already_added", "")
           } else {
             this.result?.success("success")
