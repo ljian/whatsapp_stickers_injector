@@ -202,6 +202,7 @@ class StickerPack {
             }
             json["stickers"] = stickersArray
 
+            print("sendToWhatsApp json: \(json)")
             let result = Interoperability.send(json: json)
             DispatchQueue.main.async {
                 completionHandler(result)
