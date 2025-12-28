@@ -89,9 +89,12 @@ Future installFromAssets() async {
   // stickers.forEach((sticker, emojis) {
   //   stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/$sticker'), emojis);
   // });
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_0.webp'), ['🖐', '👋']);
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_1.webp'), ['🖐', '👋']);
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_2.webp'), ['🖐', '👋']);
+  // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_0.webp'), ['🖐', '👋']);
+  // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_1.webp'), ['🖐', '👋']);
+  // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_2.webp'), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/1.webp'), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/2.webp'), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/3.webp'), ['🖐', '👋']);
 
   try {
     await stickerPack.sendToWhatsApp();
