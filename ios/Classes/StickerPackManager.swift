@@ -1,5 +1,5 @@
 //
-// Copyright (c) WhatsApp Inc. and its affiliates.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 // All rights reserved.
 //
 // This source code is licensed under the BSD-style license found in the
@@ -77,17 +77,21 @@ class StickerPackManager {
                     fatalError("\(packName) must have an identifier and it must be unique.")
                 }
 
+                let animatedStickerPack: Bool? = pack["animated_sticker_pack"] as? Bool
+
                 var stickerPack: StickerPack?
 
                 do {
-                   stickerPack = try StickerPack(identifier: packIdentifier!, name: packName, publisher: packPublisher, trayImageFileName: packTrayImageFileName, publisherWebsite: packPublisherWebsite, privacyPolicyWebsite: packPrivacyPolicyWebsite, licenseAgreementWebsite: packLicenseAgreementWebsite)
+                    stickerPack = try StickerPack(identifier: packIdentifier!, name: packName, publisher: packPublisher, trayImageFileName: packTrayImageFileName, animatedStickerPack: animatedStickerPack, publisherWebsite: packPublisherWebsite, privacyPolicyWebsite: packPrivacyPolicyWebsite, licenseAgreementWebsite: packLicenseAgreementWebsite)
                 } catch StickerPackError.fileNotFound {
                     fatalError("\(packTrayImageFileName) not found.")
                 } catch StickerPackError.emptyString {
                     fatalError("The name, identifier, and publisher strings can't be empty.")
                 } catch StickerPackError.unsupportedImageFormat(let imageFormat) {
                     fatalError("\(packTrayImageFileName): \(imageFormat) is not a supported format.")
-                } catch StickerPackError.imageTooBig(let imageFileSize) {
+                } catch StickerPackError.invalidImage {
+                    fatalError("Tray image file size is 0 KB.")
+                } catch StickerPackError.imageTooBig(let imageFileSize, _) {
                     let roundedSize = round((Double(imageFileSize) / 1024) * 100) / 100;
                     fatalError("\(packTrayImageFileName): \(roundedSize) KB is bigger than the max tray image file size (\(Limits.MaxTrayImageFileSize / 1024) KB).")
                 } catch StickerPackError.incorrectImageSize(let imageDimensions) {
@@ -103,25 +107,41 @@ class StickerPackManager {
                 let stickers: [[String: Any]] = pack["stickers"] as! [[String: Any]]
                 for sticker in stickers {
                     let emojis: [String]? = sticker["emojis"] as? [String]
+                    let accessibilityText: String? = sticker["accessibility_text"] as? String
 
                     let filename = sticker["image_file"] as! String
                     do {
-                        try stickerPack!.addSticker(contentsOfFile: filename, emojis: emojis)
+                        try stickerPack!.addSticker(
+                            contentsOfFile: filename,
+                            emojis: emojis,
+                            accessibilityText: accessibilityText
+                        )
                     } catch StickerPackError.stickersNumOutsideAllowableRange {
                         fatalError("Sticker count outside the allowable limit (\(Limits.MaxStickersPerPack) stickers per pack).")
                     } catch StickerPackError.fileNotFound {
                         fatalError("\(filename) not found.")
                     } catch StickerPackError.unsupportedImageFormat(let imageFormat) {
                         fatalError("\(filename): \(imageFormat) is not a supported format.")
-                    } catch StickerPackError.imageTooBig(let imageFileSize) {
+                    } catch StickerPackError.invalidImage {
+                        fatalError("Image file size is 0 KB.")
+                    } catch StickerPackError.imageTooBig(let imageFileSize, let animated) {
                         let roundedSize = round((Double(imageFileSize) / 1024) * 100) / 100;
-                        fatalError("\(filename): \(roundedSize) KB is bigger than the max file size (\(Limits.MaxStickerFileSize / 1024) KB).")
+                        let maxSize = animated ? Limits.MaxAnimatedStickerFileSize : Limits.MaxStaticStickerFileSize
+                        fatalError("\(filename): \(roundedSize) KB is bigger than the max file size (\(maxSize / 1024) KB).")
                     } catch StickerPackError.incorrectImageSize(let imageDimensions) {
                         fatalError("\(filename): \(imageDimensions) is not compliant with sticker images dimensions, \(Limits.ImageDimensions).")
-                    } catch StickerPackError.animatedImagesNotSupported {
-                        fatalError("\(filename) is an animated image. Animated images are not supported.")
                     } catch StickerPackError.tooManyEmojis {
                         fatalError("\(filename) has too many emojis. \(Limits.MaxEmojisCount) is the maximum number.")
+                    } catch StickerPackError.minFrameDurationTooShort(let minFrameDuration) {
+                        let roundedDuration = round(minFrameDuration)
+                        fatalError("\(filename): \(roundedDuration) ms is shorter than the min frame duration (\(Limits.MinAnimatedStickerFrameDurationMS) ms).")
+                    } catch StickerPackError.totalAnimationDurationTooLong(let totalFrameDuration) {
+                        let roundedDuration = round(totalFrameDuration)
+                        fatalError("\(filename): \(roundedDuration) ms is longer than the max total animation duration (\(Limits.MaxAnimatedStickerTotalDurationMS) ms).")
+                    } catch StickerPackError.animatedStickerPackWithStaticStickers {
+                        fatalError("Animated sticker pack contains static stickers.")
+                    } catch StickerPackError.staticStickerPackWithAnimatedStickers {
+                        fatalError("Static sticker pack contains animated stickers.")
                     } catch {
                         fatalError(error.localizedDescription)
                     }

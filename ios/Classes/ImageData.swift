@@ -1,5 +1,5 @@
 //
-// Copyright (c) WhatsApp Inc. and its affiliates.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 // All rights reserved.
 //
 // This source code is licensed under the BSD-style license found in the
@@ -64,6 +64,22 @@ class ImageData {
     }()
 
     /**
+     *  Returns the minimum frame duration for an animated image in milliseconds.
+     *  It will always return -1 if the image is not animated.
+     */
+    lazy var minFrameDuration: Double = {
+        return WebPManager.shared.minFrameDuration(webPData: data) * 1000
+    }()
+
+    /**
+     *  Returns the total animation duration for an animated image in milliseconds.
+     *  It will always return -1 if the image is not animated.
+     */
+    lazy var totalAnimationDuration: Double = {
+        return WebPManager.shared.totalAnimationDuration(webPData: data) * 1000
+    }()
+
+    /**
      *  Returns the webp data representation of the current image. If the current image is already webp,
      *  the data is simply returned. If it's png, it will returned the webp converted equivalent data.
      */
@@ -80,8 +96,18 @@ class ImageData {
      */
     lazy var image: UIImage? = {
         if type == .webp {
-            return WebPManager.shared.decode(webPData: data)
+            guard let images = WebPManager.shared.decode(webPData: data) else {
+                return nil
+            }
+            if images.count == 0 {
+                return nil
+            }
+            if images.count == 1 {
+                return images.first
+            }
+            return UIImage.animatedImage(with: images, duration: WebPManager.shared.totalAnimationDuration(webPData: data))
         } else {
+            // Static image
             return UIImage(data: data)
         }
     }()
@@ -106,11 +132,15 @@ class ImageData {
 
     static func imageDataIfCompliant(contentsOfFile filename: String, isTray: Bool) throws -> ImageData {
         let fileExtension: String = (filename as NSString).pathExtension
-        
-        guard let data = FileManager.default.contents(atPath: filename) else {
-            throw StickerPackError.fileNotFound
-        }
 
+//         throw StickerPackError.unsupportedImageFormat("test: \(fileExtension),\(filename),\(URL(fileURLWithPath: filename)) :end.")
+
+//         guard let imageURL = Bundle.main.url(forResource: filename, withExtension: "") else {
+//             throw StickerPackError.fileNotFound
+//         }
+        let imageURL = URL(fileURLWithPath: filename)
+
+        let data = try Data(contentsOf: imageURL)
         guard let imageType = ImageDataExtension(rawValue: fileExtension) else {
             throw StickerPackError.unsupportedImageFormat(fileExtension)
         }
@@ -121,25 +151,40 @@ class ImageData {
     static func imageDataIfCompliant(rawData: Data, extensionType: ImageDataExtension, isTray: Bool) throws -> ImageData {
         let imageData = ImageData(data: rawData, type: extensionType)
 
-//         guard !imageData.animated else {
-//             throw StickerPackError.animatedImagesNotSupported
-//         }
-
+        guard imageData.bytesSize > 0 else {
+            throw StickerPackError.invalidImage
+        }
         if isTray {
+            guard !imageData.animated else {
+                throw StickerPackError.animatedImagesNotSupported
+            }
+
             guard imageData.bytesSize <= Limits.MaxTrayImageFileSize else {
-                throw StickerPackError.imageTooBig(imageData.bytesSize)
+                throw StickerPackError.imageTooBig(imageData.bytesSize, false)
             }
 
             guard imageData.image!.size == Limits.TrayImageDimensions else {
                 throw StickerPackError.incorrectImageSize(imageData.image!.size)
             }
         } else {
-            guard imageData.bytesSize <= Limits.MaxStickerFileSize else {
-                throw StickerPackError.imageTooBig(imageData.bytesSize)
+            let isAnimated = imageData.animated
+            guard (isAnimated && imageData.bytesSize <= Limits.MaxAnimatedStickerFileSize) ||
+                    (!isAnimated && imageData.bytesSize <= Limits.MaxStaticStickerFileSize) else {
+                throw StickerPackError.imageTooBig(imageData.bytesSize, isAnimated)
             }
 
             guard imageData.image!.size == Limits.ImageDimensions else {
                 throw StickerPackError.incorrectImageSize(imageData.image!.size)
+            }
+
+            if isAnimated {
+                guard imageData.minFrameDuration >= Double(Limits.MinAnimatedStickerFrameDurationMS) else {
+                    throw StickerPackError.minFrameDurationTooShort(imageData.minFrameDuration)
+                }
+
+                guard imageData.totalAnimationDuration <= Double(Limits.MaxAnimatedStickerTotalDurationMS) else {
+                    throw StickerPackError.totalAnimationDurationTooLong(imageData.totalAnimationDuration)
+                }
             }
         }
 

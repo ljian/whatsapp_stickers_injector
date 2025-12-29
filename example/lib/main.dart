@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:whatsapp_stickers_injector/exceptions.dart';
 import 'package:whatsapp_stickers_injector/whatsapp_stickers.dart';
@@ -76,11 +78,16 @@ const stickers = {
 };
 
 Future installFromAssets() async {
+  File file = await copyAssetToLocal('assets/tray_Cuppy.png');
+  File file1 = await copyAssetToLocal('assets/1.webp');
+  File file2 = await copyAssetToLocal('assets/2.webp');
+  File file3 = await copyAssetToLocal('assets/3.webp');
+
   var stickerPack = WhatsappStickers(
     identifier: 'cuppyFlutterWhatsAppStickers',
     name: 'Cuppy Flutter WhatsApp Stickers',
     publisher: 'John Doe',
-    trayImageFileName: WhatsappStickerImage.fromAsset('assets/tray_Cuppy.png'),
+    trayImageFileName: WhatsappStickerImage.fromFile(file.path),//WhatsappStickerImage.fromAsset('assets/tray_Cuppy.png'),
     publisherWebsite: '',
     privacyPolicyWebsite: '',
     licenseAgreementWebsite: '',
@@ -92,14 +99,60 @@ Future installFromAssets() async {
   // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_0.webp'), ['🖐', '👋']);
   // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_1.webp'), ['🖐', '👋']);
   // stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/processed_sticker_2.webp'), ['🖐', '👋']);
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/1.webp'), ['🖐', '👋']);
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/2.webp'), ['🖐', '👋']);
-  stickerPack.addSticker(WhatsappStickerImage.fromAsset('assets/3.webp'), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromFile(file1.path), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromFile(file2.path), ['🖐', '👋']);
+  stickerPack.addSticker(WhatsappStickerImage.fromFile(file3.path), ['🖐', '👋']);
 
   try {
     await stickerPack.sendToWhatsApp();
-  } on WhatsappStickersException catch (e) {
-    print(e.cause);
+  } on WhatsappStickersException catch (e, s) {
+    print('sendToWhatsApp ${e.cause},$s');
+  }
+}
+
+/// 将 assets 文件拷贝到应用程序文档目录
+/// [assetPath] assets文件路径，如: "assets/images/sticker.png"
+/// [targetSubDir] 目标子目录（可选），如: "stickers"
+/// [newFileName] 新文件名（可选），不指定则使用原文件名
+Future<File> copyAssetToLocal(
+    String assetPath, {
+      String? targetSubDir,
+      String? newFileName,
+    }) async {
+  try {
+    // 1. 获取应用程序文档目录
+    Directory appDocDir = await getApplicationDocumentsDirectory();
+    Directory targetDir = appDocDir;
+
+    // 2. 如果指定了子目录，创建该目录
+    if (targetSubDir != null && targetSubDir.isNotEmpty) {
+      targetDir = Directory(path.join(appDocDir.path, targetSubDir));
+      if (!await targetDir.exists()) {
+        await targetDir.create(recursive: true);
+      }
+    }
+
+    // 3. 确定目标文件名
+    String fileName = newFileName ?? path.basename(assetPath);
+    String targetPath = path.join(targetDir.path, fileName);
+
+    // 4. 读取 asset 数据
+    ByteData data = await rootBundle.load(assetPath);
+
+    // 5. 写入到本地文件
+    List<int> bytes = data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+
+    File file = File(targetPath);
+    await file.writeAsBytes(bytes);
+
+    print('✅ Asset copied: $assetPath -> $targetPath');
+    return file;
+  } catch (e) {
+    print('❌ Failed to copy asset $assetPath: $e');
+    rethrow;
   }
 }
 

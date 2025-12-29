@@ -7,3 +7,4 @@
 //
 
 // #import <YYImage/YYImage.h>
+#import "YYImageCoder.h"

@@ -50,6 +50,7 @@ public class SwiftWhatsappStickersPlugin: NSObject, FlutterPlugin {
         let publisherWebsite = arguments["publisherWebsite"] as? String
         let privacyPolicyWebsite = arguments["privacyPolicyWebsite"] as? String
         let licenseAgreementWebsite = arguments["licenseAgreementWebsite"] as? String
+        let animated = arguments["animatedStickerPack"] as? Bool
         
         var stickerPack: StickerPack?
         
@@ -58,12 +59,13 @@ public class SwiftWhatsappStickersPlugin: NSObject, FlutterPlugin {
                                           name: name,
                                           publisher: publisher,
                                           trayImageFileName: locateFile(atPath: trayImageFileName),
+                                          animatedStickerPack: animated,
                                           publisherWebsite: publisherWebsite,
                                           privacyPolicyWebsite: privacyPolicyWebsite,
                                           licenseAgreementWebsite: licenseAgreementWebsite)
             
         } catch StickerPackError.fileNotFound {
-            result(FlutterError(code: "FILE_NOT_FOUND", message: "\(trayImageFileName) not found.", details: nil))
+            result(FlutterError(code: "FILE_NOT_FOUND", message: "tray \(trayImageFileName) not found.", details: nil))
             return
         } catch StickerPackError.emptyString {
             result(FlutterError(code: "EMPTY_STRING", message: "The name, identifier, and publisher strings can't be empty.", details: nil))
@@ -71,9 +73,9 @@ public class SwiftWhatsappStickersPlugin: NSObject, FlutterPlugin {
         } catch StickerPackError.unsupportedImageFormat(let imageFormat) {
             result(FlutterError(code: "UNSUPPORTED_IMAGE_FORMAT", message: "\(trayImageFileName): \(imageFormat) is not a supported format.", details: nil))
             return
-        } catch StickerPackError.imageTooBig(let imageFileSize) {
+        } catch StickerPackError.imageTooBig(let imageFileSize, _) {
             let roundedSize = round((Double(imageFileSize) / 1024) * 100) / 100
-            result(FlutterError(code: "IMAGE_TOO_BIG", message: "\(trayImageFileName): \(roundedSize) KB is bigger than the max file size (\(Limits.MaxStickerFileSize / 1024) KB).", details: nil))
+            result(FlutterError(code: "IMAGE_TOO_BIG", message: "\(trayImageFileName): \(roundedSize) KB is bigger than the max file size.", details: nil))
             return
         } catch StickerPackError.incorrectImageSize(let imageDimensions) {
             result(FlutterError(code: "INCORRECT_IMAGE_SIZE", message: "\(trayImageFileName): \(imageDimensions) is not compliant with sticker images dimensions, \(Limits.ImageDimensions).", details: nil))
@@ -94,19 +96,19 @@ public class SwiftWhatsappStickersPlugin: NSObject, FlutterPlugin {
             let filename = sticker.key
             
             do {
-                try stickerPack!.addSticker(contentsOfFile: locateFile(atPath: filename), emojis: emojis)
+                try stickerPack!.addSticker(contentsOfFile: locateFile(atPath: filename), emojis: emojis, accessibilityText: "")
             } catch StickerPackError.stickersNumOutsideAllowableRange {
                 result(FlutterError(code: "OUTSIDE_ALLOWABLE_RANGE", message: "Sticker count outside the allowable limit (\(Limits.MaxStickersPerPack) stickers per pack).", details: nil))
                 return
             } catch StickerPackError.fileNotFound {
-                result(FlutterError(code: "FILE_NOT_FOUND", message: "\(filename) not found.", details: nil))
+                result(FlutterError(code: "FILE_NOT_FOUND", message: "file \(filename) not found.", details: nil))
                 return
             } catch StickerPackError.unsupportedImageFormat(let imageFormat) {
                 result(FlutterError(code: "UNSUPPORTED_IMAGE_FORMAT", message: "\(filename): \(imageFormat) is not a supported format.", details: nil))
                 return
-            } catch StickerPackError.imageTooBig(let imageFileSize) {
+            } catch StickerPackError.imageTooBig(let imageFileSize, _) {
                 let roundedSize = round((Double(imageFileSize) / 1024) * 100) / 100;
-                result(FlutterError(code: "IMAGE_TOO_BIG", message: "\(filename): \(roundedSize) KB is bigger than the max file size (\(Limits.MaxStickerFileSize / 1024) KB).", details: nil))
+                result(FlutterError(code: "IMAGE_TOO_BIG", message: "\(filename): \(roundedSize) KB is bigger than the max file size.", details: nil))
                 return
             } catch StickerPackError.incorrectImageSize(let imageDimensions) {
                 result(FlutterError(code: "INCORRECT_IMAGE_SIZE", message: "\(filename): \(imageDimensions) is not compliant with sticker images dimensions, \(Limits.ImageDimensions).", details: nil))
@@ -133,13 +135,22 @@ public class SwiftWhatsappStickersPlugin: NSObject, FlutterPlugin {
         if atPath.hasPrefix("assets://") {
             let asset = String(atPath.dropFirst(9))
             
-            guard let fileUrl = Bundle.main.url(forResource: registrar!.lookupKey(forAsset:asset), withExtension: "") else {
+            // Check if asset starts with the assets directory prefix
+            var lookupKey: String
+            if asset.hasPrefix("assets/") {
+                // Remove the "assets/" prefix since it's already the base directory
+                lookupKey = String(asset.dropFirst(7))
+            } else {
+                lookupKey = asset
+            }
+            
+            guard let fileUrl = Bundle.main.url(forResource: lookupKey, withExtension: "") else {
                 throw StickerPackError.fileNotFound
             }
             
             return fileUrl.path
         }
-        
+
         if atPath.hasPrefix("file://") {
             let path = String(atPath.dropFirst(7))
             
