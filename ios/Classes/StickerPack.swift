@@ -185,6 +185,7 @@ class StickerPack {
             json["name"] = self.name
             json["publisher"] = self.publisher
             json["tray_image"] = self.trayImage.image!.pngData()?.base64EncodedString()
+            json["animated_sticker_pack"] = true
 
             var stickersArray: [[String: Any]] = []
             for sticker in self.stickers {
